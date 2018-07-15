@@ -1,21 +1,24 @@
-import requests
-import json
 import time
 import re
-
-from settings import LIMIT, BASEURL, EVENTS_TO_NOTIFY, USERNAME, PASSWORD
+import socket
+import json
+import pickle
+import requests
+from settings import LIMIT, BASEURL, EVENTS_TO_NOTIFY, USERNAME, PASSWORD, BLACKLIST, PA_APP_TOKEN, PA_USER_KEY
 
 
 # TODO;
 # relogin
 # validate result
 # black
-# blacklist
+# readme
+# update devices map
+# last_ts persistent
 
 
 def main():
     sess = login()
-    last_ts = 0
+    last_ts = get_tsdump()
     mac_map = get_replace_map(sess)
     while(True):
         try:
@@ -25,13 +28,16 @@ def main():
                     continue
                 print(event['key'], event['datetime'])
                 if event['key'].upper() in EVENTS_TO_NOTIFY:
-                    print(replace_users(event['msg'], mac_map))
+                    msg = replace_users(event['msg'], mac_map)
+                    print(msg)
+                    if event.get('user') not in BLACKLIST:
+                        send_message_retry(msg)
                 last_ts = event['time']
         except requests.exceptions.ConnectionError as e:
             print(e)
+        with open('tsdump.pkl', 'wb') as dumpfile:
+            pickle.dump(last_ts, dumpfile)
         time.sleep(5)
-
-
 
 def login():
     data = {
@@ -74,6 +80,33 @@ def get_devices(sess):
         return result['data']
     else:
         return None
+
+def send_message_retry(message, retries=3):
+
+    for retry in range(retries):
+        try:
+            r = requests.post(
+                'https://api.pushover.net/1/messages.json',
+                data={'token': PA_APP_TOKEN, 'user': PA_USER_KEY, 'message': message},
+            )
+            break
+        except socket.gaierror:
+            print('retry')
+            time.sleep(1)
+            continue
+
+def get_tsdump():
+    try:
+        with open('tsdump.pkl', 'rb') as dumpfile:
+            tsdump = pickle.load(dumpfile)
+        return tsdump
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        print('file not found', e)
+        return 0
+
 
 if __name__ == '__main__':
     main()
