@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timedelta
 import re
 import socket
 import json
@@ -8,22 +9,27 @@ from settings import LIMIT, BASEURL, EVENTS_TO_NOTIFY, USERNAME, PASSWORD, BLACK
 
 
 # TODO;
-# relogin
 # validate result
 # black
 # readme
-# update devices map
-# last_ts persistent
 
 
 def main():
     sess = login()
     last_ts = get_tsdump()
-    mac_map = get_replace_map(sess)
+    mac_map = {}
+    mac_map_time = None
     while(True):
         try:
+            if not mac_map_time or datetime.utcnow() - mac_map_time > timedelta(hours=1):
+                mac_map = get_replace_map(sess)
+                mac_map_time = datetime.utcnow()
+                print('refresh mac_map')
             r = sess.get(BASEURL + '/s/default/stat/event?_limit=%s' % LIMIT, verify=False)
-            for event in sorted(r.json()['data'], key=lambda x: x['time']):
+            result = r.json()
+            if result['meta']['rc'] == 'error' and result['meta']['msg'] == 'api.err.LoginRequired':
+                sess = login()
+            for event in sorted(result['data'], key=lambda x: x['time']):
                 if event['time'] <= last_ts:
                     continue
                 print(event['key'], event['datetime'])
