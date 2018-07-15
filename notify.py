@@ -35,7 +35,7 @@ def main():
                     continue
                 print(event['key'], event['datetime'])
                 if event['key'].upper() in EVENTS_TO_NOTIFY:
-                    msg = replace_users(event['msg'], mac_map)
+                    msg = format_message(event, mac_map)
                     print(msg)
                     if event.get('user') not in BLACKLIST:
                         send_message_retry(msg)
@@ -56,9 +56,10 @@ def login():
     sess.post(BASEURL + '/login', data=json.dumps(data), verify=False)
     return sess
 
-def replace_users(msg, mac_map):
+def format_message(event, mac_map):
+    message = '{datetime}: {msg}'.format(**event)
     pattern = re.compile(r'\b(' + '|'.join(mac_map.keys()) + r')\b')
-    return pattern.sub(lambda x: mac_map[x.group()], msg)
+    return pattern.sub(lambda x: mac_map[x.group()], message)
 
 def get_replace_map(sess):
     mac_map = {}
