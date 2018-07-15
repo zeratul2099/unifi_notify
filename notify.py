@@ -58,7 +58,7 @@ def login():
     return sess
 
 def format_message(event, mac_map):
-    message = '{datetime}: {msg}'.format(**event)
+    message = '{msg} ({datetime})'.format(**event)
     pattern = re.compile(r'\b(' + '|'.join(mac_map.keys()) + r')\b')
     return pattern.sub(lambda x: mac_map[x.group()], message)
 
