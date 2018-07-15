@@ -15,6 +15,7 @@ from settings import LIMIT, BASEURL, EVENTS_TO_NOTIFY, USERNAME, PASSWORD, BLACK
 
 
 def main():
+    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
     sess = login()
     last_ts = get_tsdump()
     mac_map = {}
