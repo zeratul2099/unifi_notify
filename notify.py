@@ -30,6 +30,7 @@ def main():
             result = r.json()
             if result['meta']['rc'] == 'error' and result['meta']['msg'] == 'api.err.LoginRequired':
                 sess = login()
+                continue
             for event in sorted(result['data'], key=lambda x: x['time']):
                 if event['time'] <= last_ts:
                     continue
