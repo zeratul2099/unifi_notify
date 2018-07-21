@@ -26,6 +26,8 @@ def main():
                 mac_map = get_replace_map(sess)
                 mac_map_time = datetime.utcnow()
                 print('refresh mac_map')
+                with open('tsdump.pkl', 'wb') as dumpfile:
+                    pickle.dump(last_ts, dumpfile)
             r = sess.get(BASEURL + '/s/default/stat/event?_limit=%s' % LIMIT, verify=False)
             result = r.json()
             if result['meta']['rc'] == 'error' and result['meta']['msg'] == 'api.err.LoginRequired':
@@ -43,8 +45,11 @@ def main():
                 last_ts = event['time']
         except requests.exceptions.ConnectionError as e:
             print(e)
-        with open('tsdump.pkl', 'wb') as dumpfile:
-            pickle.dump(last_ts, dumpfile)
+        except KeyboardInterrupt:
+            print('saving')
+            with open('tsdump.pkl', 'wb') as dumpfile:
+                pickle.dump(last_ts, dumpfile)
+            raise
         time.sleep(5)
 
 def login():
@@ -67,9 +72,9 @@ def get_replace_map(sess):
     users = get_users(sess)
     devices = get_devices(sess)
     for device in users + devices:
-        if 'name' in device:
+        if 'name' in device and device['name']:
             mac_map[device['mac']] = device['name']
-        elif 'hostname' in device:
+        elif 'hostname' in device and device['hostname']:
             mac_map[device['mac']] = device['hostname']
     return mac_map
 
