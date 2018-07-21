@@ -43,14 +43,15 @@ def main():
                     if event.get('user') not in BLACKLIST:
                         send_message_retry(msg)
                 last_ts = event['time']
+                time.sleep(5)
         except requests.exceptions.ConnectionError as e:
             print(e)
+            time.sleep(2)
         except KeyboardInterrupt:
             print('saving')
             with open('tsdump.pkl', 'wb') as dumpfile:
                 pickle.dump(last_ts, dumpfile)
             raise
-        time.sleep(5)
 
 def login():
     data = {
