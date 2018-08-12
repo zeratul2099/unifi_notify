@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import re
 import socket
 import json
+from simplejson.scanner import JSONDecodeError
 import pickle
 import requests
 from settings import LIMIT, BASEURL, EVENTS_TO_NOTIFY, USERNAME, PASSWORD, BLACKLIST, PA_APP_TOKEN, PA_USER_KEY
@@ -44,7 +45,7 @@ def main():
                         send_message_retry(msg)
                 last_ts = event['time']
                 time.sleep(5)
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
             print(e)
             time.sleep(2)
         except KeyboardInterrupt:
