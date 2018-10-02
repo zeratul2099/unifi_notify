@@ -43,8 +43,10 @@ def main():
                     print(msg)
                     if event.get('user') not in BLACKLIST:
                         send_message_retry(msg)
+                        # wait for a little bit with sending messages
+                        time.sleep(2)
                 last_ts = event['time']
-                time.sleep(5)
+            time.sleep(5)
         except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
             print(e)
             time.sleep(2)
