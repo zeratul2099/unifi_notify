@@ -6,17 +6,11 @@ import json
 import pickle
 from simplejson.scanner import JSONDecodeError
 import requests
-from settings import (
-    LIMIT,
-    BASEURL,
-    EVENTS_TO_NOTIFY,
-    USERNAME, PASSWORD,
-    BLACKLIST,
-    PA_APP_TOKEN,
-    PA_USER_KEY
-)
+import yaml
 
 
+with open('settings.yaml') as settings_file:
+    SETTINGS = yaml.load(settings_file)
 
 def main():
     # pylint: disable=no-member
@@ -37,7 +31,9 @@ def main():
                 print('refresh mac_map')
                 with open('tsdump.pkl', 'wb') as dumpfile:
                     pickle.dump(last_ts, dumpfile)
-            response = sess.get(BASEURL + '/s/default/stat/event?_limit=%s' % LIMIT, verify=False)
+            response = sess.get(
+                SETTINGS['baseurl'] + '/s/default/stat/event?_limit=%s' \
+                    % SETTINGS['limit'], verify=False)
             result = response.json()
             if result['meta']['rc'] == 'error' and result['meta']['msg'] == 'api.err.LoginRequired':
                 sess = login()
@@ -46,10 +42,10 @@ def main():
                 if event['time'] <= last_ts:
                     continue
                 print(event['key'], event['datetime'])
-                if event['key'].upper() in EVENTS_TO_NOTIFY:
+                if event['key'].upper() in SETTINGS['events_to_notify']:
                     msg = format_message(event, mac_map)
                     print(msg)
-                    if event.get('user') not in BLACKLIST:
+                    if event.get('user') not in SETTINGS['blacklist']:
                         send_message_retry(msg)
                         # wait for a little bit with sending messages
                         time.sleep(2)
@@ -66,12 +62,12 @@ def main():
 
 def login():
     data = {
-        'password': PASSWORD,
-        'username': USERNAME,
+        'password': SETTINGS['password'],
+        'username': SETTINGS['username'],
         'sesstionTimeout': 3600000,
     }
     sess = requests.Session()
-    sess.post(BASEURL + '/login', data=json.dumps(data), verify=False)
+    sess.post(SETTINGS['baseurl'] + '/login', data=json.dumps(data), verify=False)
     return sess
 
 def format_message(event, mac_map):
@@ -92,13 +88,13 @@ def get_replace_map(sess):
 
 
 def get_users(sess):
-    response = sess.get(BASEURL + '/s/default/rest/user', verify=False)
+    response = sess.get(SETTINGS['baseurl'] + '/s/default/rest/user', verify=False)
     result = response.json()
     if result['meta']['rc'] == 'ok':
         return result['data']
 
 def get_devices(sess):
-    response = sess.get(BASEURL + '/s/default/stat/device', verify=False)
+    response = sess.get(SETTINGS['baseurl'] + '/s/default/stat/device', verify=False)
     result = response.json()
     if result['meta']['rc'] == 'ok':
         return result['data']
@@ -109,7 +105,11 @@ def send_message_retry(message, retries=3):
         try:
             _response = requests.post(
                 'https://api.pushover.net/1/messages.json',
-                data={'token': PA_APP_TOKEN, 'user': PA_USER_KEY, 'message': message},
+                data={
+                    'token': SETTINGS['pa_app_token'],
+                    'user': SETTINGS['pa_user_key'],
+                    'message': message
+                },
             )
             break
         except socket.gaierror:
