@@ -3,25 +3,33 @@ from datetime import datetime, timedelta
 import re
 import socket
 import json
-from simplejson.scanner import JSONDecodeError
 import pickle
+from simplejson.scanner import JSONDecodeError
 import requests
-from settings import LIMIT, BASEURL, EVENTS_TO_NOTIFY, USERNAME, PASSWORD, BLACKLIST, PA_APP_TOKEN, PA_USER_KEY
+from settings import (
+    LIMIT,
+    BASEURL,
+    EVENTS_TO_NOTIFY,
+    USERNAME, PASSWORD,
+    BLACKLIST,
+    PA_APP_TOKEN,
+    PA_USER_KEY
+)
 
-
-# TODO;
-# validate result
-# black
-# readme
 
 
 def main():
-    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+    # pylint: disable=no-member
+    requests.packages.urllib3.disable_warnings(
+        requests.packages.urllib3.exceptions.InsecureRequestWarning
+    )
+    # pylint: enable=no-member
+
     sess = login()
     last_ts = get_tsdump()
     mac_map = {}
     mac_map_time = None
-    while(True):
+    while True:
         try:
             if not mac_map_time or datetime.utcnow() - mac_map_time > timedelta(hours=1):
                 mac_map = get_replace_map(sess)
@@ -29,8 +37,8 @@ def main():
                 print('refresh mac_map')
                 with open('tsdump.pkl', 'wb') as dumpfile:
                     pickle.dump(last_ts, dumpfile)
-            r = sess.get(BASEURL + '/s/default/stat/event?_limit=%s' % LIMIT, verify=False)
-            result = r.json()
+            response = sess.get(BASEURL + '/s/default/stat/event?_limit=%s' % LIMIT, verify=False)
+            result = response.json()
             if result['meta']['rc'] == 'error' and result['meta']['msg'] == 'api.err.LoginRequired':
                 sess = login()
                 continue
@@ -47,8 +55,8 @@ def main():
                         time.sleep(2)
                 last_ts = event['time']
             time.sleep(5)
-        except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
-            print(e)
+        except (requests.exceptions.ConnectionError, JSONDecodeError) as exc:
+            print(exc)
             time.sleep(2)
         except KeyboardInterrupt:
             print('saving')
@@ -84,26 +92,22 @@ def get_replace_map(sess):
 
 
 def get_users(sess):
-    r = sess.get(BASEURL + '/s/default/rest/user', verify=False)
-    result = r.json()
+    response = sess.get(BASEURL + '/s/default/rest/user', verify=False)
+    result = response.json()
     if result['meta']['rc'] == 'ok':
         return result['data']
-    else:
-        return None
 
-def get_devices(sess): 
-    r = sess.get(BASEURL + '/s/default/stat/device', verify=False)
-    result = r.json()
+def get_devices(sess):
+    response = sess.get(BASEURL + '/s/default/stat/device', verify=False)
+    result = response.json()
     if result['meta']['rc'] == 'ok':
         return result['data']
-    else:
-        return None
 
 def send_message_retry(message, retries=3):
 
-    for retry in range(retries):
+    for _retry in range(retries):
         try:
-            r = requests.post(
+            _response = requests.post(
                 'https://api.pushover.net/1/messages.json',
                 data={'token': PA_APP_TOKEN, 'user': PA_USER_KEY, 'message': message},
             )
@@ -118,14 +122,13 @@ def get_tsdump():
         with open('tsdump.pkl', 'rb') as dumpfile:
             tsdump = pickle.load(dumpfile)
         return tsdump
-    except Exception as e:
+    except Exception as exc: # pylint: disable=broad-except
         import traceback
 
         traceback.print_exc()
-        print('file not found', e)
+        print('file not found', exc)
         return 0
 
 
 if __name__ == '__main__':
     main()
-
