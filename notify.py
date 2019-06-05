@@ -26,8 +26,13 @@ def main():
     while True:
         try:
             if not mac_map_time or datetime.utcnow() - mac_map_time > timedelta(hours=1):
-                mac_map = get_replace_map(sess)
-                mac_map_time = datetime.utcnow()
+                try:
+                    mac_map = get_replace_map(sess)
+                    mac_map_time = datetime.utcnow()
+                except TypeError:
+                    # only terminate if no mac_map at all
+                    if mac_map is None:
+                        raise
                 print('refresh mac_map')
                 with open('tsdump.pkl', 'wb') as dumpfile:
                     pickle.dump(last_ts, dumpfile)
